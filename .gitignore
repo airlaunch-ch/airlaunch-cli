@@ -48,3 +48,8 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Airflow specific files and folders
+venv/
+connections.yaml
+airflow-home/
+.vscode/

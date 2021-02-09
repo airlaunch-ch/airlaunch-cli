@@ -1,0 +1,189 @@
+#!/bin/bash
+
+## Default Config
+export AIRFLOW_DAGS_PATH=$(pwd)/dags
+export AIRFLOW_HOME=$(pwd)/airflow-home
+export AIRFLOW_VERSION=2.0.1
+export AIRFLOW_EXTRAS=postgres,google
+export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
+export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
+export AIRFLOW_VENV_NAME=venv
+export AIRFLOW__CORE__LOAD_EXAMPLES=False
+export AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=10
+export AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=10
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
+
+function ctrl_c() {
+    echo "Terminating Airflow components"
+    pkill -P $$
+    rm $AIRFLOW_HOME/airflow-scheduler.pid
+    sleep 5
+    exit
+}
+
+function stop_airflow() {
+  echo "stopping scheduler"
+  pkill --pidfile $AIRFLOW_HOME/airflow-scheduler.pid
+  echo "stopping airflow"
+  pkill --pidfile $AIRFLOW_HOME/airflow-webserver.pid
+}
+
+function activate_venv(){
+  source_env
+  if [ ! -f "$AIRFLOW_VENV_NAME/bin/activate" ]; then
+    echo "No virtual environment named '$AIRFLOW_VENV_NAME' found. Run ./air init to bootstrap one."
+    exit 0
+  fi
+  source $AIRFLOW_VENV_NAME/bin/activate
+}
+
+function source_env(){
+    if [ ! -f ".env" ]; then
+      echo "no .env file found, creating an empty one."
+      touch .env
+    fi
+    source .env
+    export AIRFLOW__CORE__DAGS_FOLDER=$AIRFLOW_DAGS_PATH
+    export AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:///${AIRFLOW_HOME}/airflow.db
+}
+
+function install_requirements(){
+    source_env
+    activate_venv
+    if [ ! -f "$AIRFLOW_REQUIREMENTS_FILE" ]; then
+      touch $AIRFLOW_REQUIREMENTS_FILE
+    fi
+    pip install -r $AIRFLOW_REQUIREMENTS_FILE
+}
+
+function init(){
+  echo "initializing environment"
+  source_env
+  virtualenv $AIRFLOW_VENV_NAME
+  activate_venv
+  PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
+  CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+  pip install "apache-airflow[${AIRFLOW_EXTRAS}]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+  airflow db init
+  disable_auth
+  install_requirements
+  load_connections
+}
+
+function disable_auth(){
+  if ! grep -Fxq "AUTH_ROLE_PUBLIC = 'Admin'" $AIRFLOW_HOME/webserver_config.py
+  then
+    echo "AUTH_ROLE_PUBLIC = 'Admin'" >> $AIRFLOW_HOME/webserver_config.py
+  fi
+}
+
+function load_connections(){
+  source_env
+  activate_venv
+  ./scripts/load_connections.py $AIRFLOW_HOME $AIRFLOW_CONNECTIONS_FILE
+}
+
+function start_verbose(){
+  source_env
+  activate_venv
+  load_connections
+  install_requirements
+
+  airflow scheduler &
+  echo $! > $AIRFLOW_HOME/airflow-scheduler.pid
+  airflow webserver
+}
+
+function start_detached(){
+  source_env
+  activate_venv
+  load_connections
+  install_requirements
+
+  airflow webserver &> /dev/null &
+  airflow scheduler &> /dev/null &
+  echo $! > $AIRFLOW_HOME/airflow-scheduler.pid
+  echo "started airflow enviornment"
+  disown
+}
+
+function export_airflow(){
+  source_env
+  activate_venv
+  if [ "$#" -eq 1 ]
+  then
+    OUTPUT_FILE=$1
+  else
+    OUTPUT_FILE=$AIRFLOW_CONNECTIONS_FILE
+  fi
+  echo "exporting connections to $OUTPUT_FILE"
+  airflow connections export --format yaml $OUTPUT_FILE
+}
+
+
+function delete_airflow_env(){
+  rm -r $AIRFLOW_HOME
+  rm -r $(pwd)/$AIRFLOW_VENV_NAME
+}
+
+function print_help(){
+  echo "Script usage:
+            initialize airflow environment:                         ./air init
+            install requirements from file requirements.txt file:   ./air install-requirements
+            start airflow enviropnment:                             ./air start ([-d] flag for detached mode)
+            stop airflow environment:                               ./air stop (or ctrl-c)
+            restart the environment:                                ./air restart
+            delete the local environment:                           ./air delete
+            pass command to airflow:                                ./air pass [command]
+            (re) load connections file:                             ./air load
+            export connections to file:                             ./air export [optional filename]. If no filename is provided, AIRFLOW_CONNECTIONS_FILE is used"
+}
+
+if [ "$1" == "init" ]
+then
+  init
+elif [ "$1" == "load" ]
+then
+  load_connections
+elif [ "$1" == "start" ]
+then
+  if [ "$2" == "-d" ]
+  then
+    start_detached
+  else
+    start_verbose
+  fi
+elif [ "$1" == "stop" ]
+then
+  stop_airflow
+elif [ "$1" == "install-requirements" ]
+then
+  install_requirements
+elif [ "$1" == "export" ]
+then
+  shift 1 
+  export_airflow "$@"
+elif [ "$1" == "restart" ]
+then
+  echo "restarting airflow environment"
+  stop_airflow
+  if [ "$2" == "-d" ]
+  then
+    start_detached
+  else
+    start_verbose
+  fi
+elif [ "$1" == "delete" ]
+then
+  delete_airflow_env
+elif [ "$1" == "pass" ]
+then
+  source_env
+  activate_venv
+  shift 1 
+  airflow "$@"
+else
+  print_help
+fi

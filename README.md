@@ -4,7 +4,10 @@ It bootstraps fully functional Airflow installation in a python venv and offers 
 It leaves your computer unchanged otherwise. 
 # Getting started
 
-1. Install dependencies
+1. clone this repo: ```git clone https://github.com/airlaunch-ch/air-cli.git && cd air-cli```
+2. make the script executable: ```chmod +x ./air```
+
+3. Install dependencies
 In order for the environemnt to work, you need:
 
 - Python 3.6+

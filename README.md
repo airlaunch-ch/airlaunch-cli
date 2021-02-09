@@ -55,3 +55,7 @@ The pip requirements file holding additional packages to be installed. Put your 
 ```./air install-requirements```
 
 You can configure where airflow looks for this file in the .env file. By default it is located in the DAG folder. 
+
+# Contributing
+
+If you found a bug or want to improve this package, feel free to open a pull request. 

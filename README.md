@@ -1,6 +1,6 @@
 # Airlaunch Local Airflow Development Environment
 This is a local Airflow development enviornment.
-It bootstraps fully functional Airflow installation in a python venv and offers convenience functions to manage its configuration.
+It bootstraps a fully functional Airflow installation in a python venv and offers convenience functions to manage its configuration.
 It leaves your computer unchanged otherwise. 
 # Getting started
 
@@ -14,6 +14,23 @@ In order for the environemnt to work, you need:
 - Python virtualenv (```pip install virtualenv```)
 - [Airflow system dependencies](https://airflow.apache.org/docs/apache-airflow/stable/installation.html#system-dependencies)
 
+```bash
+sudo apt-get install -y --no-install-recommends \
+        freetds-bin \
+        krb5-user \
+        ldap-utils \
+        libffi6 \
+        libsasl2-2 \
+        libsasl2-modules \
+        libssl1.1 \
+        locales  \
+        lsb-release \
+        sasl2-bin \
+        sqlite3 \
+        unixodbc
+```
+
+
 2. Initialize environment: 
    
    ```./air init```
@@ -25,8 +42,8 @@ In order for the environemnt to work, you need:
 Thats's it! Airflow is now available on localhost:8080
 
 # Testing DAGs
-To test dags without needing to start the web server, you can use the airflow command line interface. 
-You can run airflow commands using the command passthrough functionality:
+To test dags without needing to start the web server, you can use the airlaunch cli command line interface. 
+You can run any airflow command using the command passthrough functionality:
 
 ```./air pass [airflow command]``` 
 

@@ -34,11 +34,11 @@ This command temporarliy sets the environment variables and activates the venv a
 
 To test airflow dags and tasks indiviually, simply run
 
-```./air pass dags test [dag_id] [exechution_time]```
+```./air pass dags test [dag_id] [execution_time]```
 
 You can run any airflow command using the command passthrough. 
-# Configuration
 
+# Configuration
 There are three relevant configuration files: 
 
 **.env**

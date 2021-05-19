@@ -52,10 +52,9 @@ function source_env(){
 function install_requirements(){
     source_env
     activate_venv
-    if [ ! -f "$AIRFLOW_REQUIREMENTS_FILE" ]; then
-      touch $AIRFLOW_REQUIREMENTS_FILE
+    if [ -f "$AIRFLOW_REQUIREMENTS_FILE" ]; then
+      pip install -r $AIRFLOW_REQUIREMENTS_FILE
     fi
-    pip install -r $AIRFLOW_REQUIREMENTS_FILE
 }
 
 function init(){

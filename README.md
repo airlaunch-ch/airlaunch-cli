@@ -41,6 +41,10 @@ sudo apt-get install -y --no-install-recommends \
 
 Thats's it! Airflow is now available on localhost:8080
 
+# Adding DAGs
+The default expected DAG folder path is {currentDirectory}/dags.
+This may be changed in the .env file under AIRFLOW_DAGS_PATH.
+
 # Testing DAGs
 To test dags without needing to start the web server, you can use the airlaunch cli command line interface. 
 You can run any airflow command using the command passthrough functionality:

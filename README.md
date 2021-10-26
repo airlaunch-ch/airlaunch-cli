@@ -9,33 +9,14 @@ It leaves your computer unchanged otherwise.
 
 3. Install dependencies
 In order for the environemnt to work, you need:
+   - Python 3.6+
+   - Python virtualenv (```pip install virtualenv```)
 
-- Python 3.6+
-- Python virtualenv (```pip install virtualenv```)
-- [Airflow system dependencies](https://airflow.apache.org/docs/apache-airflow/stable/installation.html#system-dependencies)
-
-```bash
-sudo apt-get install -y --no-install-recommends \
-        freetds-bin \
-        krb5-user \
-        ldap-utils \
-        libffi6 \
-        libsasl2-2 \
-        libsasl2-modules \
-        libssl1.1 \
-        locales  \
-        lsb-release \
-        sasl2-bin \
-        sqlite3 \
-        unixodbc
-```
-
-
-2. Initialize environment: 
+4. Initialize environment: 
    
    ```./air init```
 
-3. Start airflow:
+5. Start airflow:
    
    ```./air start```
 

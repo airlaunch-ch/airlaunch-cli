@@ -1,14 +1,15 @@
 #!/bin/bash
 
 ## Default Config
-export AIRFLOW_DAGS_PATH=$(pwd)/dags
-export AIRFLOW_HOME=$(pwd)/airflow-home
-export AIRFLOW_VERSION=2.0.1
-export AIRFLOW_EXTRAS=postgres,google
-export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
-export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
-export AIRFLOW_VENV_NAME=venv
+#export AIRFLOW_DAGS_PATH=$(pwd)/dags
+#export AIRFLOW_HOME=$(pwd)/airflow-home
+#export AIRFLOW_VERSION=2.2.3
+#export AIRFLOW_EXTRAS=postgres,google
+#export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
+#export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
+#export AIRFLOW_VENV_NAME=venv
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
+export AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
 export AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=10
 export AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=10
 
@@ -18,16 +19,14 @@ trap ctrl_c INT
 function ctrl_c() {
     echo "Terminating Airflow components"
     pkill -P $$
-    rm $AIRFLOW_HOME/airflow-scheduler.pid
+    rm $AIRFLOW_HOME/airflow.pid
     sleep 5
     exit
 }
 
 function stop_airflow() {
-  echo "stopping scheduler"
-  pkill --pidfile $AIRFLOW_HOME/airflow-scheduler.pid
   echo "stopping airflow"
-  pkill --pidfile $AIRFLOW_HOME/airflow-webserver.pid
+  pkill --pidfile $AIRFLOW_HOME/airflow.pid
 }
 
 function activate_venv(){
@@ -41,12 +40,52 @@ function activate_venv(){
 
 function source_env(){
     if [ ! -f ".env" ]; then
-      echo "no .env file found, creating an empty one."
-      touch .env
+      echo "no .env file found, creating the default file."
+      echo '# Use these environment variables to configure your enviornment. Default should work fine
+
+# Airflow version to be installed
+export AIRFLOW_VERSION=2.2.3
+
+# Airflow extras to install. Check https://airflow.apache.org/docs/apache-airflow/2.0.0/extra-packages-ref.html for available extras
+# export AIRFLOW_EXTRAS=apache.atlas,apache.beam,apache.cassandra,apache.drill,apache.druid,apache.hdfs,apache.hive,apache.kylin,apache.livy,apache.pig,apache.pinot,apache.spark,apache.sqoop,apache.webhdfs,airbyte,alibaba,amazon,asana,azure,cloudant,databricks,datadog,dingding,discord,facebook,google,hashicorp,jira,opsgenie,pagerduty,plexus,qubole,salesforce,sendgrid,segment,slack,snowflake,tableau,telegram,vertica,yandex,zendesk
+export AIRFLOW_EXTRAS="amazon,azure,google,postgres"
+
+# Path to the Airflow DAG files
+# WARNING: # dags path can be anywhere on your system, but make sure that airflow-home is not a subfolder of your dags folder as this confuses the airflow scheduler
+export AIRFLOW_DAGS_PATH=$(pwd)
+
+# Name of the python venv that is created
+export AIRFLOW_VENV_NAME=venv
+
+# Path to the pip requirements file. These will be instaled automatically on startup
+export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
+
+# Path to the airflow home folder. This is the folder where metadata and airflow internal config files are stored. Usually, there is no need for manual intervention in this folder
+# WARNING: Make sure that airflow-home is not a subfolder of your dags folder as this confuses the airflow scheduler
+export AIRFLOW_HOME=$AIRFLOW_DAGS_PATH/airflow-home
+
+# Path to an optional yaml file holding connection definitions in yaml format. Use the format as defined here: https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html#exporting-connections-from-the-cli 
+# You can also use the web interface to create connections and generate this file later on using our export function. 
+# This file will be imported on startup and when the comman air load is run 
+export AIRFLOW_CONNECTIONS_FILE=$AIRFLOW_DAGS_PATH/connections.yaml
+' > .env
     fi
     source .env
     export AIRFLOW__CORE__DAGS_FOLDER=$AIRFLOW_DAGS_PATH
     export AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:///${AIRFLOW_HOME}/airflow.db
+}
+
+function create_airflowignore(){
+  airflow_home_rel=${AIRFLOW_HOME#"$AIRFLOW_DAGS_PATH/"}
+  if [ ! -f "$AIRFLOW_DAGS_PATH/.airflowignore" ]; then
+    echo "# default .airflowignore file making sure the scheduler ignores the venv and airflow home folder. 
+# The Airflow Scheduler gets confused sometines if ir processes the airflow-home folder
+${airflow_home_rel}/
+${AIRFLOW_VENV_NAME}/
+
+# You can add your own ignore clauses below
+">$AIRFLOW_DAGS_PATH/.airflowignore
+  fi
 }
 
 function install_requirements(){
@@ -66,7 +105,8 @@ function init(){
   activate_venv
   PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
   CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
-  pip install "apache-airflow[${AIRFLOW_EXTRAS}]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+  pip install "apache-airflow[${AIRFLOW_EXTRAS}]"==${AIRFLOW_VERSION} pyyaml --constraint "${CONSTRAINT_URL}"
+  create_airflowignore
   airflow db init
   disable_auth
   install_requirements
@@ -83,7 +123,8 @@ function disable_auth(){
 function load_connections(){
   source_env
   activate_venv
-  ./scripts/load_connections.py $AIRFLOW_HOME $AIRFLOW_CONNECTIONS_FILE
+  drop_connections
+  airflow connections import $AIRFLOW_CONNECTIONS_FILE
 }
 
 function start_verbose(){
@@ -92,9 +133,7 @@ function start_verbose(){
   load_connections
   install_requirements
 
-  airflow scheduler &
-  echo $! > $AIRFLOW_HOME/airflow-scheduler.pid
-  airflow webserver
+  airflow standalone
 }
 
 function start_detached(){
@@ -103,9 +142,8 @@ function start_detached(){
   load_connections
   install_requirements
 
-  airflow webserver &> /dev/null &
-  airflow scheduler &> /dev/null &
-  echo $! > $AIRFLOW_HOME/airflow-scheduler.pid
+  airflow standalone &> /dev/null &
+  echo $! > $AIRFLOW_HOME/airflow.pid
   echo "started airflow enviornment"
   disown
 }
@@ -125,8 +163,28 @@ function export_airflow(){
 
 
 function delete_airflow_env(){
+  source_env
   rm -r $AIRFLOW_HOME
-  rm -r $(pwd)/$AIRFLOW_VENV_NAME
+  rm -r $AIRFLOW_VENV_NAME
+}
+
+function drop_connections(){
+  IFS=''
+  connections='('
+  while read -r line 
+  do  
+    if [[ "$line" =~ ^[a-z,0-9,-,_]*:$ ]]
+    then
+      line=`echo $line | sed 's/://'`
+      connections+="'$line',"
+    fi
+  done <$AIRFLOW_CONNECTIONS_FILE
+  connections=`echo $connections | sed 's/.$//'`
+  connections+=")"
+  echo "import sqlite3
+conn = sqlite3.connect('{}/airflow.db'.format('$AIRFLOW_HOME'))
+conn.execute(\"DELETE FROM connection WHERE conn_id IN $connections\")
+conn.commit()" | python 
 }
 
 function print_help(){

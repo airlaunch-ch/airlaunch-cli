@@ -1,13 +1,13 @@
 #!/bin/bash
 
 ## Default Config
-#export AIRFLOW_DAGS_PATH=$(pwd)/dags
-#export AIRFLOW_HOME=$(pwd)/airflow-home
-#export AIRFLOW_VERSION=2.2.3
-#export AIRFLOW_EXTRAS=postgres,google
-#export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
-#export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
-#export AIRFLOW_VENV_NAME=venv
+export AIRFLOW_DAGS_PATH=$(pwd)/dags
+export AIRFLOW_HOME=$(pwd)/airflow-home
+export AIRFLOW_VERSION=2.2.3
+export AIRFLOW_EXTRAS=postgres,google
+export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
+export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
+export AIRFLOW_VENV_NAME=venv
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
 export AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
 export AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=10
@@ -161,6 +161,17 @@ function export_airflow(){
   airflow connections export --format yaml $OUTPUT_FILE
 }
 
+function test_dag(){
+  source_env
+  activate_venv
+  if [ "$#" -eq 1 ]
+  then
+    execution_date=$(date -I)
+  else
+    execution_date=$2
+  fi
+  airflow dags test $1 $execution_date
+}
 
 function delete_airflow_env(){
   source_env
@@ -179,6 +190,10 @@ function drop_connections(){
       connections+="'$line',"
     fi
   done <$AIRFLOW_CONNECTIONS_FILE
+  if [ ${#connections} -eq 1 ]
+  then
+    return 0
+  fi
   connections=`echo $connections | sed 's/.$//'`
   connections+=")"
   echo "import sqlite3
@@ -189,15 +204,25 @@ conn.commit()" | python
 
 function print_help(){
   echo "Script usage:
-            initialize airflow environment:                         ./air init
-            install requirements from file requirements.txt file:   ./air install-requirements
-            start airflow enviropnment:                             ./air start ([-d] flag for detached mode)
-            stop airflow environment:                               ./air stop (or ctrl-c)
-            restart the environment:                                ./air restart
-            delete the local environment:                           ./air delete
-            pass command to airflow:                                ./air pass [command]
-            (re) load connections file:                             ./air load
-            export connections to file:                             ./air export [optional filename]. If no filename is provided, AIRFLOW_CONNECTIONS_FILE is used"
+            initialize airflow environment:                         air init
+
+            install requirements from file requirements.txt file:   air install-requirements
+
+            start airflow enviropnment:                             air start ([-d] flag for detached mode)
+
+            stop airflow environment:                               air stop (or ctrl-c)
+
+            restart the environment:                                air restart
+
+            run a dag                                               air test [dag_id] ([execution_date] optional). If no execution date is provided, today's date at midninight is used
+
+            delete the local environment:                           air delete
+
+            pass command to airflow:                                air pass [command]
+
+            (re) load connections file:                             air load
+
+            export connections to file:                             air export [optional filename]. If no filename is provided, AIRFLOW_CONNECTIONS_FILE is used"
 }
 
 if [ "$1" == "init" ]
@@ -237,6 +262,10 @@ then
 elif [ "$1" == "delete" ]
 then
   delete_airflow_env
+elif [ "$1" == "test" ]
+then
+  shift 1
+  test_dag "$@"  
 elif [ "$1" == "pass" ]
 then
   source_env

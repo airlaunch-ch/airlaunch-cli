@@ -54,3 +54,4 @@ connections.yaml
 airflow-home/
 .vscode/
 .airflowignore
+.env

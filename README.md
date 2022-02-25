@@ -3,6 +3,8 @@ This is a local Airflow development enviornment.
 It bootstraps a fully functional Airflow installation in a python venv and offers convenience functions to manage its configuration.
 It leaves your computer unchanged otherwise. 
 
+This is for development purposes only and does not create a production ready airflow installation. 
+
 # Getting started
 
 1. Install dependencies
@@ -13,12 +15,11 @@ In order for the environemnt to work, you need:
 
 2. clone this repo: ```git clone https://github.com/airlaunch-ch/airlaunch-cli.git && cd airlaunch-cli```
 3. Install the script to a location in your path: ```chmod +x ./air && sudo cp ./air /usr/local/bin/```
-
-5. Go to your dags folder and initialize the environment: 
+4. Go to your dags folder and initialize the environment: 
    
    ```air init```
 
-6. Start airflow:
+5. Start airflow:
    
    ```air start```
 
@@ -49,7 +50,7 @@ The main user facing configuration file. A default config file will be generated
 The default configuration should work fine for most people. Check inside the file for documentation of the ways you can customize your environment. 
 
 **connections.yaml**
-A yaml file holding airflow connections (i.e. your database credentials). 
+A yaml file holding airflow connections (e.g. your database credentials). 
 Check the official [Airflow documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html#exporting-connections-from-the-cli) to learn more about the format that is expected. 
 You can also load all connections in the Airflow web interface and then generate this file with 
 

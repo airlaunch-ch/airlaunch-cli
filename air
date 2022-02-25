@@ -3,7 +3,7 @@
 ## Default Config
 export AIRFLOW_DAGS_PATH=$(pwd)/dags
 export AIRFLOW_HOME=$(pwd)/airflow-home
-export AIRFLOW_VERSION=2.2.3
+export AIRFLOW_VERSION=2.2.4
 export AIRFLOW_EXTRAS=postgres,google
 export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
 export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
@@ -44,7 +44,7 @@ function source_env(){
       echo '# Use these environment variables to configure your enviornment. Default should work fine
 
 # Airflow version to be installed
-export AIRFLOW_VERSION=2.2.3
+export AIRFLOW_VERSION=2.2.4
 
 # Airflow extras to install. Check https://airflow.apache.org/docs/apache-airflow/2.0.0/extra-packages-ref.html for available extras
 # export AIRFLOW_EXTRAS=apache.atlas,apache.beam,apache.cassandra,apache.drill,apache.druid,apache.hdfs,apache.hive,apache.kylin,apache.livy,apache.pig,apache.pinot,apache.spark,apache.sqoop,apache.webhdfs,airbyte,alibaba,amazon,asana,azure,cloudant,databricks,datadog,dingding,discord,facebook,google,hashicorp,jira,opsgenie,pagerduty,plexus,qubole,salesforce,sendgrid,segment,slack,snowflake,tableau,telegram,vertica,yandex,zendesk

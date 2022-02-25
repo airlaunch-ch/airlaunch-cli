@@ -66,3 +66,4 @@ You can configure where airflow looks for this file in the .env file. By default
 # Contributing
 
 If you found a bug or want to improve this package, feel free to open a pull request. 
+

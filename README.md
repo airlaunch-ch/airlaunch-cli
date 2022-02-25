@@ -25,16 +25,19 @@ In order for the environemnt to work, you need:
 Thats's it! Airflow is now available on localhost:8080
 
 # Testing DAGs
-To test dags without needing to start the web server, you can use the airlaunch cli command line interface. 
+You can easlily run DAGs without needing to start the webserver. 
+Simply run 
+
+```air test [dag_id] ([execution_date])```
+
+This will run the dag in question. The execution date is optional. If you do not provide it, the current date will be used. 
+
+# Interact with the Airflow instance
 You can run any airflow command using the command passthrough functionality:
 
 ```air pass [airflow command]``` 
 
 This command temporarliy sets the environment variables and activates the venv and then passes the command to airflow unchanged. 
-
-To test airflow dags and tasks indiviually, simply run
-
-```air pass dags test [dag_id] [execution_time]```
 
 You can run any airflow command using the command passthrough. 
 

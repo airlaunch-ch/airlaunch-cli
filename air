@@ -74,7 +74,7 @@ function create_airflowignore(){
   airflow_home_rel=${AIRFLOW_HOME#"$AIRFLOW_DAGS_PATH/"}
   if [ ! -f "$AIRFLOW_DAGS_PATH/.airflowignore" ]; then
     echo "# default .airflowignore file making sure the scheduler ignores the venv and airflow home folder. 
-# The Airflow Scheduler gets confused sometines if ir processes the airflow-home folder
+# The Airflow Scheduler gets confused sometines if it processes the airflow-home folder
 ${airflow_home_rel}/
 ${AIRFLOW_VENV_NAME}/
 

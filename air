@@ -55,9 +55,39 @@ function activate_venv(){
 }
 
 function source_env(){
-    if [ ! -f ".env" ]; then
-      echo "no .env file found, creating the default file."
-      echo "# Use these environment variables to configure your enviornment. Default should work fine
+    source .env
+    export AIRFLOW__CORE__DAGS_FOLDER=$AIRFLOW_DAGS_PATH
+    export AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:///${AIRFLOW_HOME}/airflow.db
+}
+
+
+
+function create_airflowignore(){
+  airflow_home_rel=${AIRFLOW_HOME#"$AIRFLOW_DAGS_PATH/"}
+  if [ ! -f "$AIRFLOW_DAGS_PATH/.airflowignore" ]; then
+    echo "# default .airflowignore file making sure the scheduler ignores the venv and airflow home folder. 
+# The Airflow Scheduler gets confused sometines if ir processes the airflow-home folder
+${airflow_home_rel}/
+${AIRFLOW_VENV_NAME}/
+
+# You can add your own ignore clauses below
+">$AIRFLOW_DAGS_PATH/.airflowignore
+  fi
+}
+
+function install_requirements(){
+    source_env
+    activate_venv
+    if [ -f "$AIRFLOW_REQUIREMENTS_FILE" ]; then
+      PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
+      CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+      pip install -r $AIRFLOW_REQUIREMENTS_FILE --constraint "${CONSTRAINT_URL}"
+    fi
+}
+
+function init_env(){
+  if [ ! -f ".env" ]; then
+      echo "# Use these environment variables to configure your enviornment. Default should work fine for most use cases
 
 # Airflow version to be installed
 export AIRFLOW_VERSION=$AIRFLOW_VERSION
@@ -86,36 +116,11 @@ export AIRFLOW_HOME=$AIRFLOW_HOME
 export AIRFLOW_CONNECTIONS_FILE=$AIRFLOW_CONNECTIONS_FILE
 " > .env
     fi
-    source .env
-    export AIRFLOW__CORE__DAGS_FOLDER=$AIRFLOW_DAGS_PATH
-    export AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:///${AIRFLOW_HOME}/airflow.db
-}
-
-function create_airflowignore(){
-  airflow_home_rel=${AIRFLOW_HOME#"$AIRFLOW_DAGS_PATH/"}
-  if [ ! -f "$AIRFLOW_DAGS_PATH/.airflowignore" ]; then
-    echo "# default .airflowignore file making sure the scheduler ignores the venv and airflow home folder. 
-# The Airflow Scheduler gets confused sometines if ir processes the airflow-home folder
-${airflow_home_rel}/
-${AIRFLOW_VENV_NAME}/
-
-# You can add your own ignore clauses below
-">$AIRFLOW_DAGS_PATH/.airflowignore
-  fi
-}
-
-function install_requirements(){
-    source_env
-    activate_venv
-    if [ -f "$AIRFLOW_REQUIREMENTS_FILE" ]; then
-      PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
-      CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
-      pip install -r $AIRFLOW_REQUIREMENTS_FILE --constraint "${CONSTRAINT_URL}"
-    fi
 }
 
 function init(){
   echo "initializing environment"
+  init_env
   source_env
   virtualenv $AIRFLOW_VENV_NAME
   activate_venv
@@ -235,9 +240,6 @@ function print_help(){
 Wrapper skript to manage Apache Airflow development Enviornments in python virtual environments.
 It adds the 'env' subcommand with functionality to automatically install and run airflow development environments.
 
-Configuration: 
-
-
 Script usage:
 
     Manage Enviornments:
@@ -252,13 +254,18 @@ Script usage:
     
     Use Airflow Command Line (just replace the airflow command with the air command): 
         activate venv and run any airflow command:              air [airflow_group] [airflow_command]
+"
 
+if [ -f ".env" ] && [ -d "$AIRFLOW_VENV_NAME" ]
+then
+  echo "
 Airflow Usage:
 "
 
-source_env
-activate_venv 
-airflow --help
+  source_env
+  activate_venv 
+  airflow --help
+fi
 }
 
 if [ "$1" == "env" ]

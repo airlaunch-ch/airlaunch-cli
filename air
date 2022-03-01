@@ -15,13 +15,15 @@
 # limitations under the License.
 
 ## Default Config
-export AIRFLOW_DAGS_PATH=$(pwd)/dags
-export AIRFLOW_HOME=$(pwd)/airflow-home
-export AIRFLOW_VERSION=2.2.4
-export AIRFLOW_EXTRAS=postgres,google
-export AIRFLOW_CONNECTIONS_FILE=$(pwd)/connections.yaml
-export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
-export AIRFLOW_VENV_NAME=venv
+export AIRFLOW_DAGS_PATH=${AIRFLOW_DAGS_PATH=$(pwd)}
+export AIRFLOW_HOME=${AIRFLOW_HOME:=$(pwd)/airflow-home}
+export AIRFLOW_VERSION=${AIRFLOW_VERSION:=2.2.4}
+export AIRFLOW_EXTRAS=${AIRFLOW_EXTRAS:=amazon,azure,google,postgres}
+export AIRFLOW_REQUIREMENTS_FILE=${AIRFLOW_REQUIREMENTS_FILE:=$AIRFLOW_DAGS_PATH/requirements.txt}
+export AIRFLOW_VENV_NAME=${AIRFLOW_VENV_NAME:=venv}
+export AIRFLOW_CONNECTIONS_FILE=${AIRFLOW_CONNECTIONS_FILE:=$AIRFLOW_DAGS_PATH/connections.yaml}
+
+## Airflow Config
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
 export AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
 export AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=10
@@ -34,7 +36,7 @@ function ctrl_c() {
     echo "Terminating Airflow components"
     pkill -P $$
     rm $AIRFLOW_HOME/airflow.pid
-    sleep 5
+    sleep 2
     exit
 }
 
@@ -46,7 +48,7 @@ function stop_airflow() {
 function activate_venv(){
   source_env
   if [ ! -f "$AIRFLOW_VENV_NAME/bin/activate" ]; then
-    echo "No virtual environment named '$AIRFLOW_VENV_NAME' found. Run ./air init to bootstrap one."
+    echo "No virtual environment named '$AIRFLOW_VENV_NAME' found. Run 'air env init' to bootstrap one."
     exit 0
   fi
   source $AIRFLOW_VENV_NAME/bin/activate
@@ -55,34 +57,34 @@ function activate_venv(){
 function source_env(){
     if [ ! -f ".env" ]; then
       echo "no .env file found, creating the default file."
-      echo '# Use these environment variables to configure your enviornment. Default should work fine
+      echo "# Use these environment variables to configure your enviornment. Default should work fine
 
 # Airflow version to be installed
-export AIRFLOW_VERSION=2.2.4
+export AIRFLOW_VERSION=$AIRFLOW_VERSION
 
 # Airflow extras to install. Check https://airflow.apache.org/docs/apache-airflow/2.0.0/extra-packages-ref.html for available extras
 # export AIRFLOW_EXTRAS=apache.atlas,apache.beam,apache.cassandra,apache.drill,apache.druid,apache.hdfs,apache.hive,apache.kylin,apache.livy,apache.pig,apache.pinot,apache.spark,apache.sqoop,apache.webhdfs,airbyte,alibaba,amazon,asana,azure,cloudant,databricks,datadog,dingding,discord,facebook,google,hashicorp,jira,opsgenie,pagerduty,plexus,qubole,salesforce,sendgrid,segment,slack,snowflake,tableau,telegram,vertica,yandex,zendesk
-export AIRFLOW_EXTRAS="amazon,azure,google,postgres"
+export AIRFLOW_EXTRAS=$AIRFLOW_EXTRAS
 
 # Path to the Airflow DAG files
 # WARNING: # dags path can be anywhere on your system, but make sure that airflow-home is not a subfolder of your dags folder as this confuses the airflow scheduler
-export AIRFLOW_DAGS_PATH=$(pwd)
+export AIRFLOW_DAGS_PATH=$AIRFLOW_DAGS_PATH
 
 # Name of the python venv that is created
-export AIRFLOW_VENV_NAME=venv
+export AIRFLOW_VENV_NAME=$AIRFLOW_VENV_NAME
 
 # Path to the pip requirements file. These will be instaled automatically on startup
-export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_DAGS_PATH/requirements.txt
+export AIRFLOW_REQUIREMENTS_FILE=$AIRFLOW_REQUIREMENTS_FILE
 
 # Path to the airflow home folder. This is the folder where metadata and airflow internal config files are stored. Usually, there is no need for manual intervention in this folder
 # WARNING: Make sure that airflow-home is not a subfolder of your dags folder as this confuses the airflow scheduler
-export AIRFLOW_HOME=$AIRFLOW_DAGS_PATH/airflow-home
+export AIRFLOW_HOME=$AIRFLOW_HOME
 
 # Path to an optional yaml file holding connection definitions in yaml format. Use the format as defined here: https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html#exporting-connections-from-the-cli 
 # You can also use the web interface to create connections and generate this file later on using our export function. 
 # This file will be imported on startup and when the comman air load is run 
-export AIRFLOW_CONNECTIONS_FILE=$AIRFLOW_DAGS_PATH/connections.yaml
-' > .env
+export AIRFLOW_CONNECTIONS_FILE=$AIRFLOW_CONNECTIONS_FILE
+" > .env
     fi
     source .env
     export AIRFLOW__CORE__DAGS_FOLDER=$AIRFLOW_DAGS_PATH
@@ -187,6 +189,18 @@ function test_dag(){
   airflow dags test $1 $execution_date
 }
 
+function test_task(){
+  source_env
+  activate_venv
+  if [ "$#" -eq 2 ]
+  then
+    execution_date=$(date -I)
+  else
+    execution_date=$3
+  fi
+  airflow tasks test $1 $2 $execution_date
+}
+
 function delete_airflow_env(){
   source_env
   rm -r $AIRFLOW_HOME
@@ -217,75 +231,87 @@ conn.commit()" | python
 }
 
 function print_help(){
-  echo "Script usage:
-            initialize airflow environment:                         air init
+  echo "
+Wrapper skript to manage Apache Airflow development Enviornments in python virtual environments.
+It adds the 'env' subcommand with functionality to automatically install and run airflow development environments.
 
-            install requirements from file requirements.txt file:   air install-requirements
+Configuration: 
 
-            start airflow enviropnment:                             air start ([-d] flag for detached mode)
 
-            stop airflow environment:                               air stop (or ctrl-c)
+Script usage:
 
-            restart the environment:                                air restart
+    Manage Enviornments:
+        initialize airflow environment:                         air env init
+        install requirements from file requirements.txt file:   air env install-requirements
+        start airflow enviropnment:                             air env start ([-d] flag for detached mode)
+        stop airflow environment:                               air env stop (or ctrl-c)
+        restart the environment:                                air env restart
+        delete the local environment:                           air env delete
+        (re) load connections file:                             air env load
+        export connections to file:                             air env export [optional filename]. If no filename is provided, AIRFLOW_CONNECTIONS_FILE is used
+    
+    Use Airflow Command Line (just replace the airflow command with the air command): 
+        activate venv and run any airflow command:              air [airflow_group] [airflow_command]
 
-            run a dag                                               air test [dag_id] ([execution_date] optional). If no execution date is provided, today's date at midninight is used
+Airflow Usage:
+"
 
-            delete the local environment:                           air delete
-
-            pass command to airflow:                                air pass [command]
-
-            (re) load connections file:                             air load
-
-            export connections to file:                             air export [optional filename]. If no filename is provided, AIRFLOW_CONNECTIONS_FILE is used"
+source_env
+activate_venv 
+airflow --help
 }
 
-if [ "$1" == "init" ]
+if [ "$1" == "env" ]
 then
-  init
-elif [ "$1" == "load" ]
-then
-  load_connections
-elif [ "$1" == "start" ]
-then
-  if [ "$2" == "-d" ]
+  if [ "$2" == "init" ]
   then
-    start_detached
-  else
-    start_verbose
-  fi
-elif [ "$1" == "stop" ]
-then
-  stop_airflow
-elif [ "$1" == "install-requirements" ]
-then
-  install_requirements
-elif [ "$1" == "export" ]
-then
-  shift 1 
-  export_airflow "$@"
-elif [ "$1" == "restart" ]
-then
-  echo "restarting airflow environment"
-  stop_airflow
-  if [ "$2" == "-d" ]
+    init
+  elif [ "$2" == "load" ]
   then
-    start_detached
+    load_connections
+  elif [ "$2" == "start" ]
+  then
+    if [ "$3" == "-d" ]
+    then
+      start_detached
+    else
+      start_verbose
+    fi
+  elif [ "$2" == "stop" ]
+  then
+    stop_airflow
+  elif [ "$2" == "install-requirements" ]
+  then
+    install_requirements
+  elif [ "$2" == "export" ]
+  then
+    shift 1
+    export_airflow "$@"
+  elif [ "$2" == "restart" ]
+  then
+    echo "restarting airflow environment"
+    stop_airflow
+    if [ "$3" == "-d" ]
+    then
+      start_detached
+    else
+      start_verbose
+    fi
+  elif [ "$2" == "delete" ]
+  then
+    delete_airflow_env
+  elif [ "$2" == "-h" ] || [ "$2" == "--help" ] || [ "$2" == "help" ]
+  then
+    print_help
   else
-    start_verbose
+    print_help
   fi
-elif [ "$1" == "delete" ]
+elif [ "$1" == "-h" ] || [ "$1" == "--help" ] || [ "$1" == "help" ] || [ "$#" -eq 0 ]
 then
-  delete_airflow_env
-elif [ "$1" == "test" ]
-then
-  shift 1
-  test_dag "$@"  
-elif [ "$1" == "pass" ]
-then
+  print_help
+else
   source_env
   activate_venv
-  shift 1 
+  shift 1
   airflow "$@"
-else
-  print_help
 fi

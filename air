@@ -76,6 +76,14 @@ ${AIRFLOW_VENV_NAME}/
   fi
 }
 
+function install_package(){
+  source_env
+  activate_venv
+  PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
+  CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+  pip install --constraint "${CONSTRAINT_URL}" $@ 
+}
+
 function install_requirements(){
     source_env
     activate_venv
@@ -1351,6 +1359,7 @@ Script usage:
 
     Manage Enviornments:
         initialize airflow environment:                         air env init
+        install reuirements:                                    air env install [PyPI Package]
         install requirements from file requirements.txt file:   air env install-requirements
         start airflow enviropnment:                             air env start ([-d] flag for detached mode)
         stop airflow environment:                               air env stop (or ctrl-c)
@@ -1396,9 +1405,13 @@ then
   elif [ "$2" == "install-requirements" ]
   then
     install_requirements
+  elif [ "$2" == "install" ]
+  then
+    shift 2
+    install_package "$@"
   elif [ "$2" == "export" ]
   then
-    shift 1
+    shift 2
     export_airflow "$@"
   elif [ "$2" == "restart" ]
   then
